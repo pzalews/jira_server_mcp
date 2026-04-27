@@ -1,0 +1,24 @@
+services:
+  jira-mcp-primary:
+    build: .
+    image: jira-mcp:latest
+    restart: unless-stopped
+    environment:
+      JIRA_URL: "${JIRA1_URL:-https://jira1.internal.example.com}"
+      JIRA_TOKEN: "${JIRA1_TOKEN}"
+      JIRA_READ_ONLY: "${JIRA1_READ_ONLY:-false}"
+      MCP_TRANSPORT: "${MCP_TRANSPORT:-stdio}"
+    stdin_open: true
+    tty: false
+
+  jira-mcp-secondary:
+    build: .
+    image: jira-mcp:latest
+    restart: unless-stopped
+    environment:
+      JIRA_URL: "${JIRA2_URL:-https://jira2.internal.example.com}"
+      JIRA_TOKEN: "${JIRA2_TOKEN}"
+      JIRA_READ_ONLY: "${JIRA2_READ_ONLY:-false}"
+      MCP_TRANSPORT: "${MCP_TRANSPORT:-stdio}"
+    stdin_open: true
+    tty: false
