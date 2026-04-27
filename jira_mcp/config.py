@@ -1,8 +1,13 @@
 from __future__ import annotations
 import base64
 from typing import Optional
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _unquote(v: str) -> str:
+    """Strip surrounding quotes that Docker Compose passes through literally."""
+    return v.strip().strip('"').strip("'")
 
 
 class Settings(BaseSettings):
@@ -23,7 +28,17 @@ class Settings(BaseSettings):
     @field_validator("jira_url")
     @classmethod
     def strip_trailing_slash(cls, v: str) -> str:
-        return v.rstrip("/")
+        v = _unquote(v).rstrip("/")
+        if not v.startswith(("http://", "https://")):
+            raise ValueError(
+                f"JIRA_URL must start with 'http://' or 'https://', got: {v!r}"
+            )
+        return v
+
+    @field_validator("jira_token", "jira_username", "jira_password", mode="before")
+    @classmethod
+    def unquote_credentials(cls, v: Optional[str]) -> Optional[str]:
+        return _unquote(v) if v is not None else v
 
     @property
     def auth_headers(self) -> dict[str, str]:
