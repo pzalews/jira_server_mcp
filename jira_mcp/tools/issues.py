@@ -110,6 +110,7 @@ def register_issues(mcp: FastMCP, client: JiraClient, settings: Settings) -> Non
         labels: Optional[list[str]] = None,
         components: Optional[list[str]] = None,
         fix_versions: Optional[list[str]] = None,
+        custom_fields: Optional[dict[str, Any]] = None,
     ) -> dict:
         """Create a new Jira issue. Returns the created issue key and self URL.
 
@@ -123,6 +124,10 @@ def register_issues(mcp: FastMCP, client: JiraClient, settings: Settings) -> Non
             labels: List of label strings.
             components: List of component names.
             fix_versions: List of fix version names.
+            custom_fields: Dict of custom field ID to value, e.g.
+                {"customfield_10401": {"id": "15872"}, "customfield_10605": "Alice"}.
+                Values are passed through as-is; format depends on field type
+                (option → {"id": "..."}, text → "string", user → {"name": "..."}).
         """
         if settings.jira_read_only:
             raise ReadOnlyModeError(
@@ -145,6 +150,8 @@ def register_issues(mcp: FastMCP, client: JiraClient, settings: Settings) -> Non
             issue_fields["components"] = [{"name": c} for c in components]
         if fix_versions:
             issue_fields["fixVersions"] = [{"name": v} for v in fix_versions]
+        if custom_fields:
+            issue_fields.update(custom_fields)
         return await client.post("/rest/api/2/issue", json={"fields": issue_fields})
 
     @mcp.tool
@@ -157,10 +164,25 @@ def register_issues(mcp: FastMCP, client: JiraClient, settings: Settings) -> Non
         labels: Optional[list[str]] = None,
         components: Optional[list[str]] = None,
         fix_versions: Optional[list[str]] = None,
+        custom_fields: Optional[dict[str, Any]] = None,
     ) -> dict:
         """Update one or more fields on an existing Jira issue.
 
         Only provided fields are updated; omitted fields are unchanged.
+
+        Args:
+            issue_key: Issue key (e.g., 'PROJ-123').
+            summary: New summary/title.
+            description: New description text.
+            assignee: Username or account ID of the assignee.
+            priority: Priority name (e.g., 'High', 'Medium', 'Low').
+            labels: Replacement list of label strings.
+            components: Replacement list of component names.
+            fix_versions: Replacement list of fix version names.
+            custom_fields: Dict of custom field ID to value, e.g.
+                {"customfield_10401": {"id": "15872"}, "customfield_10605": "Alice"}.
+                Values are passed through as-is; format depends on field type
+                (option → {"id": "..."}, text → "string", user → {"name": "..."}).
         """
         if settings.jira_read_only:
             raise ReadOnlyModeError(
@@ -181,6 +203,8 @@ def register_issues(mcp: FastMCP, client: JiraClient, settings: Settings) -> Non
             issue_fields["components"] = [{"name": c} for c in components]
         if fix_versions is not None:
             issue_fields["fixVersions"] = [{"name": v} for v in fix_versions]
+        if custom_fields:
+            issue_fields.update(custom_fields)
         if not issue_fields:
             raise ValidationError("At least one field must be provided to update_issue")
         await client.put(f"/rest/api/2/issue/{issue_key}", json={"fields": issue_fields})
